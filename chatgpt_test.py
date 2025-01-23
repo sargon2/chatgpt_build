@@ -5,7 +5,7 @@ import sys
 from openai import OpenAI
 from dotenv import load_dotenv
 
-def get_corrected_script(error_details=''):
+def get_corrected_script(conversation_history, error_details=''):
     """Requests a corrected script from the API and returns the response."""
     # Create a content for the correction request including the error details
     correction_request_content = (
@@ -13,15 +13,16 @@ def get_corrected_script(error_details=''):
         f"Error details: {error_details}"
     )
 
+    # Add the new message to the conversation history
+    conversation_history.append({
+        "role": "user",
+        "content": correction_request_content
+    })
+
     # Create a chat completion, asking for a correction
     chat_completion = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "user",
-                "content": correction_request_content
-            }
-        ]
+        messages=conversation_history
     )
 
     # Extract and return the response message containing the corrected script
@@ -59,15 +60,19 @@ content = (
 
 print("Request is", REQUEST)
 
+# Initialize conversation history
+conversation_history = []
+
+# Add initial message to conversation history
+conversation_history.append({
+    "role": "user",
+    "content": content
+})
+
 # Create a chat completion, providing the script content and asking to echo it back
 chat_completion = client.chat.completions.create(
     model="gpt-4o",
-    messages=[
-        {
-            "role": "user",
-            "content": content
-        }
-    ]
+    messages=conversation_history
 )
 
 # Extract the response content
@@ -112,16 +117,16 @@ except NameError: # Don't skip tests
                     with open("right.txt", "w") as f:
                         f.write(script_content_clean)
                     # Get a corrected script
-                    corrected_script = get_corrected_script("Echo test mismatch")
+                    corrected_script = get_corrected_script(conversation_history, "Echo test mismatch")
                     # Update script_content_clean with the corrected script for the next iteration
                     script_content_clean = corrected_script
             else:
                 print("Error: No result found!")
-                corrected_script = get_corrected_script("No result found in execution")
+                corrected_script = get_corrected_script(conversation_history, "No result found in execution")
                 script_content_clean = corrected_script
         except Exception as e:
             print("Execution error:", e)
             # Request a corrected script from the API with error details
-            corrected_script = get_corrected_script(str(e))
+            corrected_script = get_corrected_script(conversation_history, str(e))
             # Update script_content_clean with the corrected script for the next iteration
             script_content_clean = corrected_script
