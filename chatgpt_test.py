@@ -5,8 +5,14 @@ import sys
 from openai import OpenAI
 from dotenv import load_dotenv
 
-def get_corrected_script(conversation_history, error_details=''):
+def get_corrected_script(conversation_history, assistant_response, error_details=''):
     """Requests a corrected script from the API and returns the response."""
+    # Add the assistant's response to the conversation history
+    conversation_history.append({
+        "role": "assistant",
+        "content": assistant_response
+    })
+    
     # Create a content for the correction request including the error details
     correction_request_content = (
         f"The script has an error. Please correct it and provide the entire script again. "
@@ -80,6 +86,12 @@ response_message = chat_completion.choices[0].message.content
 
 print("Got response:", response_message)
 
+# Add the assistant's response to the conversation history
+conversation_history.append({
+    "role": "assistant",
+    "content": response_message
+})
+
 # Parse the response to extract only the script content
 if "```python" in response_message:
     start_index = response_message.find("```python") + len("```python")
@@ -117,16 +129,16 @@ except NameError: # Don't skip tests
                     with open("right.txt", "w") as f:
                         f.write(script_content_clean)
                     # Get a corrected script
-                    corrected_script = get_corrected_script(conversation_history, "Echo test mismatch")
+                    corrected_script = get_corrected_script(conversation_history, response_message, "Echo test mismatch")
                     # Update script_content_clean with the corrected script for the next iteration
                     script_content_clean = corrected_script
             else:
                 print("Error: No result found!")
-                corrected_script = get_corrected_script(conversation_history, "No result found in execution")
+                corrected_script = get_corrected_script(conversation_history, response_message, "No result found in execution")
                 script_content_clean = corrected_script
         except Exception as e:
             print("Execution error:", e)
             # Request a corrected script from the API with error details
-            corrected_script = get_corrected_script(conversation_history, str(e))
+            corrected_script = get_corrected_script(conversation_history, response_message, str(e))
             # Update script_content_clean with the corrected script for the next iteration
             script_content_clean = corrected_script
