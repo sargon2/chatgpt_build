@@ -5,7 +5,17 @@ import sys
 from openai import OpenAI
 from dotenv import load_dotenv
 
-MODEL="gpt-4o-mini"
+MODEL = "gpt-4o-mini"
+
+def parse_response(response_message):
+    """Parse the response to extract script content."""
+    if "```python" in response_message:
+        start_index = response_message.find("```python") + len("```python")
+        end_index = response_message.rfind("```")
+        script_content_clean = response_message[start_index:end_index].strip()
+    else:
+        script_content_clean = response_message.strip()
+    return script_content_clean
 
 def get_corrected_script(conversation_history, assistant_response, error_details=''):
     """Requests a corrected script from the API and returns the response."""
@@ -33,10 +43,9 @@ def get_corrected_script(conversation_history, assistant_response, error_details
         messages=conversation_history
     )
 
-    # Extract and return the response message containing the corrected script
+    # Extract the response message containing the corrected script
     correction = chat_completion.choices[0].message.content
-    print("Correction:", correction)
-    return correction
+    return parse_response(correction)
 
 print("Starting")
 
@@ -53,7 +62,7 @@ with open(file_path, "r") as file:
 
 try:
     REQUEST
-except NameError: # No request
+except NameError:  # No request
     print("No globals request, using argv")
     if len(sys.argv) <= 1:
         print("Usage: " + sys.argv[0] + " <request>")
@@ -88,23 +97,12 @@ response_message = chat_completion.choices[0].message.content
 
 print("Got response:", response_message)
 
-# Add the assistant's response to the conversation history
-conversation_history.append({
-    "role": "assistant",
-    "content": response_message
-})
-
-# Parse the response to extract only the script content
-if "```python" in response_message:
-    start_index = response_message.find("```python") + len("```python")
-    end_index = response_message.rfind("```")  # Use rfind to find the last occurrence of ```
-    script_content_clean = response_message[start_index:end_index].strip()
-else:
-    script_content_clean = response_message.strip()
+# Parse the response to extract the initial script content
+script_content_clean = parse_response(response_message)
 
 try:
     SKIP_TESTS
-except NameError: # Don't skip tests
+except NameError:  # Don't skip tests
 
     while True:  # Initiate a loop to keep asking for corrections until the script passes the test
         print("Executing child")
