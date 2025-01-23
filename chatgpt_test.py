@@ -5,10 +5,13 @@ import sys
 from openai import OpenAI
 from dotenv import load_dotenv
 
-def get_corrected_script(incorrect_script):
+def get_corrected_script(incorrect_script, error_details=''):
     """Requests a corrected script from the API and returns the response."""
-    # Create a content for the correction request
-    correction_request_content = f"The following script has failed or has an error, please correct it:\n\n{incorrect_script}"
+    # Create a content for the correction request including the error details
+    correction_request_content = (
+        f"The following script has an error. Please correct it. "
+        f"Error details: {error_details}\n\n{incorrect_script}"
+    )
 
     # Create a chat completion, providing the incorrect script and asking for a correction
     chat_completion = client.chat.completions.create(
@@ -107,16 +110,16 @@ except NameError: # Don't skip tests
                     with open("right.txt", "w") as f:
                         f.write(script_content_clean)
                     # Get a corrected script
-                    corrected_script = get_corrected_script(script_content_clean)
+                    corrected_script = get_corrected_script(script_content_clean, "Echo test mismatch")
                     # Update script_content_clean with the corrected script for the next iteration
                     script_content_clean = corrected_script
             else:
                 print("Error: No result found!")
-                corrected_script = get_corrected_script(script_content_clean)
+                corrected_script = get_corrected_script(script_content_clean, "No result found in execution")
                 script_content_clean = corrected_script
         except Exception as e:
             print("Execution error:", e)
-            # Request a corrected script from the API
-            corrected_script = get_corrected_script(script_content_clean)
+            # Request a corrected script from the API with error details
+            corrected_script = get_corrected_script(script_content_clean, str(e))
             # Update script_content_clean with the corrected script for the next iteration
             script_content_clean = corrected_script
