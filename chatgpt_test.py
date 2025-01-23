@@ -8,28 +8,37 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Initialize the OpenAI client
-client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY"),  # This is the default and can be omitted
-)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Read the contents of this script
 file_path = __file__
 with open(file_path, "r") as file:
     script_content = file.read()
 
+content = (
+        f"Please echo back the following script, along with any improvements or simplifications "
+        f"you can see to make to it:\n\n{script_content}"
+    )
+
+print("Sending:")
+print(content)
+
 # Create a chat completion, providing the script content and asking to echo it back
 chat_completion = client.chat.completions.create(
+    model="gpt-4o",
     messages=[
         {
             "role": "user",
-            "content": f"Please echo back the following script content exactly as it is provided:\n\n{script_content}",
+            "content": content
         }
-    ],
-    model="gpt-4o",
+    ]
 )
 
 # Extract the response content
 response_message = chat_completion.choices[0].message.content
+
+print("Got in response:")
+print(response_message)
 
 # Parse the response to extract only the script content
 if "```python" in response_message:
@@ -42,7 +51,6 @@ else:
 # Write the cleaned script content to a new file
 new_file_path = "echoed_script.py"
 with open(new_file_path, "w") as new_file:
-    new_file.write(script_content_clean)
-    new_file.write("\n")
+    new_file.write(script_content_clean + "\n")
 
 print(f"The script has been echoed back and written to {new_file_path}")
