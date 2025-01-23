@@ -5,15 +5,15 @@ import sys
 from openai import OpenAI
 from dotenv import load_dotenv
 
-def get_corrected_script(incorrect_script, error_details=''):
+def get_corrected_script(error_details=''):
     """Requests a corrected script from the API and returns the response."""
     # Create a content for the correction request including the error details
     correction_request_content = (
-        f"The following script has an error. Please correct it. "
-        f"Error details: {error_details}\n\n{incorrect_script}"
+        f"The script has an error. Please correct it and provide the entire script again. "
+        f"Error details: {error_details}"
     )
 
-    # Create a chat completion, providing the incorrect script and asking for a correction
+    # Create a chat completion, asking for a correction
     chat_completion = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -25,7 +25,9 @@ def get_corrected_script(incorrect_script, error_details=''):
     )
 
     # Extract and return the response message containing the corrected script
-    return chat_completion.choices[0].message.content
+    correction = chat_completion.choices[0].message.content
+    print("Correction:", correction)
+    return correction
 
 print("Starting")
 
@@ -110,16 +112,16 @@ except NameError: # Don't skip tests
                     with open("right.txt", "w") as f:
                         f.write(script_content_clean)
                     # Get a corrected script
-                    corrected_script = get_corrected_script(script_content_clean, "Echo test mismatch")
+                    corrected_script = get_corrected_script("Echo test mismatch")
                     # Update script_content_clean with the corrected script for the next iteration
                     script_content_clean = corrected_script
             else:
                 print("Error: No result found!")
-                corrected_script = get_corrected_script(script_content_clean, "No result found in execution")
+                corrected_script = get_corrected_script("No result found in execution")
                 script_content_clean = corrected_script
         except Exception as e:
             print("Execution error:", e)
             # Request a corrected script from the API with error details
-            corrected_script = get_corrected_script(script_content_clean, str(e))
+            corrected_script = get_corrected_script(str(e))
             # Update script_content_clean with the corrected script for the next iteration
             script_content_clean = corrected_script
