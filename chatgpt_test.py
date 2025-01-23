@@ -18,10 +18,16 @@ file_path = __file__
 with open(file_path, "r") as file:
     script_content = file.read()
 
+try:
+    REQUEST
+except NameError: # No request
+    REQUEST = sys.argv[1]
+
 content = (
-    f"Please echo back the following script with no changes:"
-    f"\n\n{script_content}"
+    f"{REQUEST}:\n\n{script_content}"
 )
+
+print("Content is", content)
 
 # Create a chat completion, providing the script content and asking to echo it back
 chat_completion = client.chat.completions.create(
@@ -54,7 +60,7 @@ except NameError: # Don't skip tests
     print("Executing child")
 
     # Execute script_content_clean and capture its result
-    exec_globals = {"__file__": __file__, "SKIP_TESTS": True}
+    exec_globals = {"__file__": __file__, "SKIP_TESTS": True, "REQUEST": "Please echo back the following script with no changes"}
     exec_locals = {}
     exec(script_content_clean, exec_globals, exec_locals)
     result = exec_locals
@@ -65,5 +71,3 @@ except NameError: # Don't skip tests
     else:
         print("Changes detected!")
 
-else: # Skip tests
-    print(script_content_clean + "\n", end="")
