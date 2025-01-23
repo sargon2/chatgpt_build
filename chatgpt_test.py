@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 from openai import OpenAI
 from dotenv import load_dotenv
+
+print("Starting")
 
 # Load environment variables from .env file
 load_dotenv()
@@ -16,7 +19,7 @@ with open(file_path, "r") as file:
     script_content = file.read()
 
 content = (
-    f"Please echo the following script back exactly as written:"
+    f"Please echo back the following script with no changes:"
     f"\n\n{script_content}"
 )
 
@@ -31,6 +34,8 @@ chat_completion = client.chat.completions.create(
     ]
 )
 
+print("Got response")
+
 # Extract the response content
 response_message = chat_completion.choices[0].message.content
 
@@ -42,5 +47,23 @@ if "```python" in response_message:
 else:
     script_content_clean = response_message.strip()
 
-# Print the new script
-print(script_content_clean + "\n", end="")
+try:
+    SKIP_TESTS
+except NameError: # Don't skip tests
+
+    print("Executing child")
+
+    # Execute script_content_clean and capture its result
+    exec_globals = {"__file__": __file__, "SKIP_TESTS": True}
+    exec_locals = {}
+    exec(script_content_clean, exec_globals, exec_locals)
+    result = exec_locals
+
+
+    if result["script_content_clean"] == script_content_clean:
+        print("No changes")
+    else:
+        print("Changes detected!")
+
+else: # Skip tests
+    print(script_content_clean + "\n", end="")
