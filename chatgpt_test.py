@@ -42,13 +42,5 @@ if "```python" in response_message:
 else:
     script_content_clean = response_message.strip()
 
-# Write the cleaned script content to a new file
-new_file_path = "echoed_script.py"
-with open(new_file_path, "w") as new_file:
-    new_file.write(script_content_clean + "\n")
-
-print(f"The script has been echoed back and written to {new_file_path}")
-
-# Compare the original and echoed scripts to check if they are identical
-is_unmodified = script_content.strip() == script_content_clean
-print(f"The response is {'unmodified' if is_unmodified else 'modified'}.")
+# Print the new script
+print(script_content_clean + "\n", end="")
