@@ -5,7 +5,16 @@ import sys
 from openai import OpenAI
 from dotenv import load_dotenv
 
-MODEL = "gpt-4o-mini"
+MODEL = "gpt-4o"
+
+# This RESULT is a bit odd.  The way it works is when we invoke exec() below,
+# we expect the script we're executing to set RESULT as a "local" variable
+# (really global to that script).
+# But we're essentially exec()ing ourselves! So to return a result to the outer
+# instance, we just set the global RESULT.
+# So, be sure not to wrap this RESULT in any function.  It must stay global to this script.
+# Also, please don't delete this comment.
+RESULT=""
 
 def parse_response(response_message):
     """Parse the response to extract script content."""
@@ -66,6 +75,9 @@ file_path = __file__
 with open(file_path, "r") as file:
     script_content = file.read()
 
+# REQUEST is a bit odd as well.  It's passed in via exec_globals, so it must also stay global to this script.
+# This try/catch checks if it's initialized or not.  If it's not initialized, we get the request from sys.argv.
+# (Don't delete this comment either.)
 try:
     REQUEST
 except NameError:  # No request
@@ -111,7 +123,12 @@ conversation_history.append({
 print("\n\n<assistant>", response_message)
 
 # Parse the response to extract the initial script content
-script_content_clean = parse_response(response_message)
+RESULT = parse_response(response_message)
+
+# Save result for debugging
+with open("output.txt", "w") as f:
+    f.write(RESULT)
+    f.write("\n")
 
 try:
     SKIP_TESTS
@@ -120,38 +137,40 @@ except NameError:  # Don't skip tests
     while True:  # Initiate a loop to keep asking for corrections until the script passes the test
         print("Executing child")
 
-        # Execute script_content_clean and capture its result
-        exec_globals = {"__file__": __file__, "SKIP_TESTS": True, "REQUEST": "Please echo back the following script with no changes"}
-        exec_locals = {}
+        # Execute RESULT and capture its result
         try:
-            exec(script_content_clean, exec_globals, exec_locals)
-            result = exec_locals
+            exec_globals = {
+                    "__name__": __name__,
+                    "__file__": __file__,
+                    "SKIP_TESTS": True,
+                    "REQUEST": "Please echo back the following script with no changes"
+                    }
+            exec_locals = {}
+            print("EXECUTING:", RESULT)
+            exec(RESULT, exec_globals, exec_locals)
+            test_result_locals = exec_locals
 
-            with open("output.txt", "w") as f:
-                f.write(script_content_clean)
-                f.write("\n")
-
-            if "script_content_clean" in result:
-                if result["script_content_clean"].strip() == script_content.strip():
+            if "RESULT" in test_result_locals:
+                if test_result_locals["RESULT"].strip() == script_content.strip():
                     print("Echo test passed")
                     break  # Exit the loop since the test passed
                 else:
                     print("Echo test failed! Unexpected changes were detected.")
                     with open("left.txt", "w") as f:
-                        f.write(result["script_content_clean"])
+                        f.write(test_result_locals["RESULT"])
                     with open("right.txt", "w") as f:
-                        f.write(script_content_clean)
+                        f.write(script_content)
                     # Get a corrected script
                     corrected_script = get_corrected_script(conversation_history, "Echo test mismatch")
-                    # Update script_content_clean with the corrected script for the next iteration
-                    script_content_clean = corrected_script
+                    # Update RESULT with the corrected script for the next iteration
+                    RESULT = corrected_script
             else:
-                print("Error: No result found! Expected script_content_clean to be in exec_locals")
-                corrected_script = get_corrected_script(conversation_history, "No result found! Expected script_content_clean to be in exec_locals")
-                script_content_clean = corrected_script
+                print("Error: No result found! Expected RESULT to be in exec_locals")
+                corrected_script = get_corrected_script(conversation_history, "No result found! Expected RESULT to be in exec_locals")
+                RESULT = corrected_script
         except Exception as e:
             print("Execution error:", e)
             # Request a corrected script from the API with error details
             corrected_script = get_corrected_script(conversation_history, str(e))
-            # Update script_content_clean with the corrected script for the next iteration
-            script_content_clean = corrected_script
+            # Update RESULT with the corrected script for the next iteration
+            RESULT = corrected_script
