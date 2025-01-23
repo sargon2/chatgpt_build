@@ -5,6 +5,8 @@ import sys
 from openai import OpenAI
 from dotenv import load_dotenv
 
+MODEL="gpt-4o-mini"
+
 def get_corrected_script(conversation_history, assistant_response, error_details=''):
     """Requests a corrected script from the API and returns the response."""
     # Add the assistant's response to the conversation history
@@ -12,7 +14,7 @@ def get_corrected_script(conversation_history, assistant_response, error_details
         "role": "assistant",
         "content": assistant_response
     })
-    
+
     # Create a content for the correction request including the error details
     correction_request_content = (
         f"The script has an error. Please correct it and provide the entire script again. "
@@ -27,7 +29,7 @@ def get_corrected_script(conversation_history, assistant_response, error_details
 
     # Create a chat completion, asking for a correction
     chat_completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=MODEL,
         messages=conversation_history
     )
 
@@ -77,7 +79,7 @@ conversation_history.append({
 
 # Create a chat completion, providing the script content and asking to echo it back
 chat_completion = client.chat.completions.create(
-    model="gpt-4o",
+    model=MODEL,
     messages=conversation_history
 )
 
