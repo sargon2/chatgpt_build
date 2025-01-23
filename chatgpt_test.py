@@ -16,12 +16,9 @@ with open(file_path, "r") as file:
     script_content = file.read()
 
 content = (
-        f"Please echo back the following script, along with any improvements or simplifications "
-        f"you can see to make to it:\n\n{script_content}"
+        f"Please echo back the following script exactly as it is written:"
+        f"\n\n{script_content}"
     )
-
-print("Sending:")
-print(content)
 
 # Create a chat completion, providing the script content and asking to echo it back
 chat_completion = client.chat.completions.create(
@@ -36,9 +33,6 @@ chat_completion = client.chat.completions.create(
 
 # Extract the response content
 response_message = chat_completion.choices[0].message.content
-
-print("Got in response:")
-print(response_message)
 
 # Parse the response to extract only the script content
 if "```python" in response_message:
