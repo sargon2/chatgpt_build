@@ -16,9 +16,9 @@ with open(file_path, "r") as file:
     script_content = file.read()
 
 content = (
-        f"Please echo back the following script exactly as it is written:"
-        f"\n\n{script_content}"
-    )
+    f"Please echo the following script back exactly as written:"
+    f"\n\n{script_content}"
+)
 
 # Create a chat completion, providing the script content and asking to echo it back
 chat_completion = client.chat.completions.create(
@@ -48,3 +48,7 @@ with open(new_file_path, "w") as new_file:
     new_file.write(script_content_clean + "\n")
 
 print(f"The script has been echoed back and written to {new_file_path}")
+
+# Compare the original and echoed scripts to check if they are identical
+is_unmodified = script_content.strip() == script_content_clean
+print(f"The response is {'unmodified' if is_unmodified else 'modified'}.")
