@@ -5,6 +5,25 @@ import sys
 from openai import OpenAI
 from dotenv import load_dotenv
 
+def get_corrected_script(incorrect_script):
+    """Requests a corrected script from the API and returns the response."""
+    # Create a content for the correction request
+    correction_request_content = f"The following script has failed or has an error, please correct it:\n\n{incorrect_script}"
+
+    # Create a chat completion, providing the incorrect script and asking for a correction
+    chat_completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "user",
+                "content": correction_request_content
+            }
+        ]
+    )
+
+    # Extract and return the response message containing the corrected script
+    return chat_completion.choices[0].message.content
+
 print("Starting")
 
 # Load environment variables from .env file
@@ -21,13 +40,19 @@ with open(file_path, "r") as file:
 try:
     REQUEST
 except NameError: # No request
+    print("No globals request, using argv")
+    if len(sys.argv) <= 1:
+        print("Usage: " + sys.argv[0] + " <request>")
+        sys.exit(1)
     REQUEST = sys.argv[1]
+else:
+    print("Got request", REQUEST)
 
 content = (
     f"{REQUEST}:\n\n{script_content}"
 )
 
-print("Content is", content)
+print("Request is", REQUEST)
 
 # Create a chat completion, providing the script content and asking to echo it back
 chat_completion = client.chat.completions.create(
@@ -40,10 +65,10 @@ chat_completion = client.chat.completions.create(
     ]
 )
 
-print("Got response")
-
 # Extract the response content
 response_message = chat_completion.choices[0].message.content
+
+print("Got response:", response_message)
 
 # Parse the response to extract only the script content
 if "```python" in response_message:
@@ -57,17 +82,41 @@ try:
     SKIP_TESTS
 except NameError: # Don't skip tests
 
-    print("Executing child")
+    while True:  # Initiate a loop to keep asking for corrections until the script passes the test
+        print("Executing child")
 
-    # Execute script_content_clean and capture its result
-    exec_globals = {"__file__": __file__, "SKIP_TESTS": True, "REQUEST": "Please echo back the following script with no changes"}
-    exec_locals = {}
-    exec(script_content_clean, exec_globals, exec_locals)
-    result = exec_locals
+        # Execute script_content_clean and capture its result
+        exec_globals = {"__file__": __file__, "SKIP_TESTS": True, "REQUEST": "Please echo back the following script with no changes"}
+        exec_locals = {}
+        try:
+            exec(script_content_clean, exec_globals, exec_locals)
+            result = exec_locals
 
+            with open("output.txt", "w") as f:
+                f.write(script_content_clean)
+                f.write("\n")
 
-    if result["script_content_clean"] == script_content_clean:
-        print("No changes")
-    else:
-        print("Changes detected!")
-
+            if "script_content_clean" in result:
+                if result["script_content_clean"].strip() == script_content.strip():
+                    print("Echo test passed")
+                    break  # Exit the loop since the test passed
+                else:
+                    print("Echo test failed! Unexpected changes were detected.")
+                    with open("left.txt", "w") as f:
+                        f.write(result["script_content_clean"])
+                    with open("right.txt", "w") as f:
+                        f.write(script_content_clean)
+                    # Get a corrected script
+                    corrected_script = get_corrected_script(script_content_clean)
+                    # Update script_content_clean with the corrected script for the next iteration
+                    script_content_clean = corrected_script
+            else:
+                print("Error: No result found!")
+                corrected_script = get_corrected_script(script_content_clean)
+                script_content_clean = corrected_script
+        except Exception as e:
+            print("Execution error:", e)
+            # Request a corrected script from the API
+            corrected_script = get_corrected_script(script_content_clean)
+            # Update script_content_clean with the corrected script for the next iteration
+            script_content_clean = corrected_script
